@@ -1,0 +1,203 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: seasons
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - startDate: string (optional, date format)
+    //   - endDate: string (optional, date format)
+    //   - isActive: boolean (required)
+    //
+    // Collection: competitions
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - seasonId: string (required)
+    //   - type: string (required, 'league' or 'cup')
+    //   - status: string (required, 'upcoming', 'ongoing', 'completed')
+    //
+    // Collection: teams
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - logoUrl: string (optional, url)
+    //   - foundedYear: number (optional)
+    //   - isActive: boolean (required)
+    //
+    // Collection: athletes
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - photoUrl: string (optional, url)
+    //   - position: string (optional)
+    //   - teamId: string (required)
+    //   - birthDate: string (optional, date format)
+    //   - isActive: boolean (required)
+    //
+    // Collection: matches
+    // Document ID: auto-generated
+    // Fields:
+    //   - competitionId: string (required)
+    //   - homeTeamId: string (required)
+    //   - awayTeamId: string (required)
+    //   - date: string (required, date-time format)
+    //   - status: string (required, 'scheduled', 'in-progress', 'finished', 'cancelled')
+    //   - homeScore: number (optional)
+    //   - awayScore: number (optional)
+    //
+    // Collection: users
+    // Document ID: user UID
+    // Fields:
+    //   - email: string (required, email format)
+    //   - name: string (optional)
+    //   - role: string (required, 'admin')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "felipe.ibco@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}.*$");
+    }
+
+    function isValidDateTimeString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidSeason(data) {
+      return hasRequiredFields(['name', 'isActive']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.isActive is bool &&
+             (!('startDate' in data) || isValidDateString(data.startDate)) &&
+             (!('endDate' in data) || isValidDateString(data.endDate));
+    }
+
+    function isValidCompetition(data) {
+      return hasRequiredFields(['name', 'seasonId', 'type', 'status']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.seasonId is string && data.seasonId.size() > 0 && data.seasonId.size() < 50 &&
+             data.type in ['league', 'cup'] &&
+             data.status in ['upcoming', 'ongoing', 'completed'];
+    }
+
+    function isValidTeam(data) {
+      return hasRequiredFields(['name', 'isActive']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.isActive is bool &&
+             (!('logoUrl' in data) || isValidUrl(data.logoUrl)) &&
+             (!('foundedYear' in data) || (data.foundedYear is number && data.foundedYear > 1800 && data.foundedYear <= 2100));
+    }
+
+    function isValidAthlete(data) {
+      return hasRequiredFields(['name', 'teamId', 'isActive']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.teamId is string && data.teamId.size() > 0 && data.teamId.size() < 50 &&
+             data.isActive is bool &&
+             (!('photoUrl' in data) || isValidUrl(data.photoUrl)) &&
+             (!('position' in data) || (data.position is string && data.position.size() < 50)) &&
+             (!('birthDate' in data) || isValidDateString(data.birthDate));
+    }
+
+    function isValidMatch(data) {
+      return hasRequiredFields(['competitionId', 'homeTeamId', 'awayTeamId', 'date', 'status']) &&
+             data.competitionId is string && data.competitionId.size() > 0 && data.competitionId.size() < 50 &&
+             data.homeTeamId is string && data.homeTeamId.size() > 0 && data.homeTeamId.size() < 50 &&
+             data.awayTeamId is string && data.awayTeamId.size() > 0 && data.awayTeamId.size() < 50 &&
+             isValidDateTimeString(data.date) &&
+             data.status in ['scheduled', 'in-progress', 'finished', 'cancelled'] &&
+             (!('homeScore' in data) || (data.homeScore is number && data.homeScore >= 0)) &&
+             (!('awayScore' in data) || (data.awayScore is number && data.awayScore >= 0));
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['email', 'role']) &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
+             data.role == 'admin' &&
+             (!('name' in data) || (data.name is string && data.name.size() < 100));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /seasons/{seasonId} {
+      allow read: if true; // Publicly readable for the public site
+      allow create: if isAdmin() && isValidSeason(request.resource.data);
+      allow update: if isAdmin() && isValidSeason(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /competitions/{competitionId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCompetition(request.resource.data);
+      allow update: if isAdmin() && isValidCompetition(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidTeam(request.resource.data);
+      allow update: if isAdmin() && isValidTeam(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /athletes/{athleteId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidAthlete(request.resource.data);
+      allow update: if isAdmin() && isValidAthlete(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidMatch(request.resource.data);
+      allow update: if isAdmin() && isValidMatch(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow create: if isAdmin() && isValidUser(request.resource.data) && request.auth.uid == userId;
+      allow update: if isAdmin() && isValidUser(request.resource.data) && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+  }
+}

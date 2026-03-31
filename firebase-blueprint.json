@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "Season": {
+      "title": "Season",
+      "description": "A playing season",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the season (e.g., 2024)"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "isActive"]
+    },
+    "Competition": {
+      "title": "Competition",
+      "description": "A tournament or league",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "seasonId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["league", "cup"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["upcoming", "ongoing", "completed"]
+        }
+      },
+      "required": ["name", "seasonId", "type", "status"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A football team",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "logoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "foundedYear": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "isActive"]
+    },
+    "Athlete": {
+      "title": "Athlete",
+      "description": "A football player",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "photoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "position": {
+          "type": "string"
+        },
+        "teamId": {
+          "type": "string"
+        },
+        "birthDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "teamId", "isActive"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A football match",
+      "type": "object",
+      "properties": {
+        "competitionId": {
+          "type": "string"
+        },
+        "homeTeamId": {
+          "type": "string"
+        },
+        "awayTeamId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["scheduled", "in-progress", "finished", "cancelled"]
+        },
+        "homeScore": {
+          "type": "number"
+        },
+        "awayScore": {
+          "type": "number"
+        }
+      },
+      "required": ["competitionId", "homeTeamId", "awayTeamId", "date", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "An admin user",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/seasons/{seasonId}": {
+      "schema": "Season",
+      "description": "Seasons collection"
+    },
+    "/competitions/{competitionId}": {
+      "schema": "Competition",
+      "description": "Competitions collection"
+    },
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Teams collection"
+    },
+    "/athletes/{athleteId}": {
+      "schema": "Athlete",
+      "description": "Athletes collection"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Matches collection"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Users collection"
+    }
+  }
+}
